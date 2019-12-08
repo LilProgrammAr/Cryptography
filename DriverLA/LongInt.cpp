@@ -100,7 +100,7 @@ std::pair<LA::LongInt::Digits, LA::LongInt::Digits>  LA::LongInt::makeEqualLengt
 	for (auto i = lhs.size(); i <= size; ++i)
 	{
 		lhs.push_back(std::int8_t(0));
-	}	
+	}
 	for (auto i = rhs.size(); i <= size; ++i)
 	{
 		rhs.push_back(std::int8_t(0));
@@ -113,6 +113,18 @@ LA::LongInt::LongInt(Digits&& n, bool isNegative)
 	: m_digits(std::move(n))
 	, m_isNegative(isNegative)
 {
+}
+
+void LA::LongInt::fromInteger(std::int64_t integer)
+{
+	integer = std::abs(integer);
+	while (integer > 0)
+	{
+		m_digits.insert(m_digits.begin(), integer % 10);
+		integer /= 10;
+	}
+	std::reverse(m_digits.begin(), m_digits.end());
+	m_digits.push_back(0);
 }
 
 void LA::LongInt::fromString(const std::string& str)
@@ -139,7 +151,24 @@ void LA::LongInt::fromString(const std::string& str)
 			m_digits.push_back(*rhead - '0');
 		}
 	}
-	
+
+}
+
+void LA::LongInt::removeZeros()
+{
+	if (!m_digits.empty())
+	{
+		size_t i = m_digits.size() - 1;
+		for (; i != 0 && m_digits[i] == 0; --i)
+		{
+			m_digits.erase(std::next(m_digits.begin(), i));
+		}
+		if (m_digits[i] == 0)
+		{
+			m_digits.erase(std::next(m_digits.begin(), i));
+		}
+		m_digits.push_back(0);
+	}
 }
 
 LA::LongInt::LongInt()
@@ -166,31 +195,31 @@ LA::LongInt::LongInt(const char* str)
 	fromString(str);
 }
 
-LA::LongInt::LongInt(std::int64_t n)
-	: m_isNegative(n < 0)
-{
-	n = n < 0 ? -n : n;
-	while (n > 0)
-	{
-		m_digits.push_back(n % 10);
-		n /= 10;
-	}
-	std::reverse(m_digits.begin(), m_digits.end());
-	m_digits.push_back(0);
-}
-
-LA::LongInt::LongInt(std::int32_t n)
-	: m_isNegative(n < 0)
-{
-	n = n < 0 ? -n : n;
-	while (n > 0)
-	{
-		m_digits.push_back(n % 10);
-		n /= 10;
-	}
-	std::reverse(m_digits.begin(), m_digits.end());
-	m_digits.push_back(0);
-}
+//LA::LongInt::LongInt(std::int64_t n)
+//	: m_isNegative(n < 0)
+//{
+//	n = n < 0 ? -n : n;
+//	while (n > 0)
+//	{
+//		m_digits.insert(m_digits.begin(), n % 10);
+//		n /= 10;
+//	}
+//	std::reverse(m_digits.begin(), m_digits.end());
+//	m_digits.push_back(0);
+//}
+//
+//LA::LongInt::LongInt(std::int32_t n)
+//	: m_isNegative(n < 0)
+//{
+//	n = n < 0 ? -n : n;
+//	while (n > 0)
+//	{
+//		m_digits.insert(m_digits.begin(), n % 10);
+//		n /= 10;
+//	}
+//	std::reverse(m_digits.begin(), m_digits.end());
+//	m_digits.push_back(0);
+//}
 
 LA::LongInt::LongInt(const LongInt& other)
 	: m_isNegative(other.m_isNegative)
@@ -217,7 +246,6 @@ LA::LongInt LA::LongInt::operator-(const LongInt& rhs) const
 	}
 	if (m_isNegative && rhs.m_isNegative)
 	{
-		return -rhs - *this;
 		return operator-().operator+(rhs.operator-()).operator-();
 	}
 	if (operator<(rhs))
@@ -237,8 +265,9 @@ LA::LongInt LA::LongInt::operator-(const LongInt& rhs) const
 		}
 		a[i] -= b[i];
 	}
-
-	return LongInt(std::move(a), false);
+	LongInt res(std::move(a), false);
+	res.removeZeros();
+	return res;
 }
 
 LA::LongInt LA::LongInt::operator+(const LA::LongInt& rhs) const
@@ -258,7 +287,7 @@ LA::LongInt LA::LongInt::operator+(const LA::LongInt& rhs) const
 
 	Digits a, b;
 	std::tie(a, b) = makeEqualLengthDigits(rhs);
-	
+
 	for (auto i = 0llu; i < a.size() - 1; ++i)
 	{
 		a[i] += b[i];
@@ -266,7 +295,9 @@ LA::LongInt LA::LongInt::operator+(const LA::LongInt& rhs) const
 		a[i] %= 10;
 	}
 
-	return LongInt(std::move(a), false);
+	LongInt res(std::move(a), false);
+	res.removeZeros();
+	return res;
 }
 
 LA::LongInt LA::LongInt::operator*(const LongInt& rhs) const
@@ -291,7 +322,9 @@ LA::LongInt LA::LongInt::operator*(const LongInt& rhs) const
 		}
 	}
 
-	return LongInt(std::move(res), resNegative);
+	LongInt resInt(std::move(res), resNegative);
+	resInt.removeZeros();
+	return resInt;
 }
 
 LA::LongInt LA::LongInt::operator/(const LongInt& rhs) const
@@ -304,7 +337,7 @@ LA::LongInt LA::LongInt::operator/(const LongInt& rhs) const
 	{
 		return LongInt(1ll);
 	}
-	if (this->operator==(LongInt(0ll)))
+	if (operator==(LongInt(0ll)))
 	{
 		return LongInt(1ll);
 	}
@@ -313,11 +346,139 @@ LA::LongInt LA::LongInt::operator/(const LongInt& rhs) const
 		throw std::logic_error("Zero division!");
 	}
 
+	bool resNegative = (m_isNegative || rhs.m_isNegative) && !(m_isNegative && rhs.m_isNegative);
+	Digits digits = m_digits;
+	while (digits.back() == 0)
+	{
+		digits.pop_back();
+	}
+	Digits res(digits.size(), 0);
+	LongInt current_value(0);
+	for (int i = 0; i < digits.size(); ++i)
+	{
+		current_value *= 10;
+		current_value.m_digits[0] = digits[digits.size() - 1 - i];
+
+		int x = 0;
+		int left_index = 0;
+		int right_index = 10;
+
+		while (left_index <= right_index)
+		{
+			int middle = (left_index + right_index) >> 1;
+
+			LongInt cur = std::abs(rhs) * middle;
+
+			if (std::abs(cur) <= std::abs(current_value))
+			{
+				x = middle;
+				left_index = middle + 1;
+			}
+			else
+			{
+				right_index = middle - 1;
+			}
+		}
+
+		res[res.size() - 1 - i] = x;
+		current_value = current_value - std::abs(rhs) * x;
+	}
+
+	LongInt resInt(std::move(res), resNegative);
+	resInt.removeZeros();
+
+	return resInt;
+}
+
+LA::LongInt& LA::LongInt::operator-=(const LongInt& rhs)
+{
+	return operator=(operator-(rhs));
+}
+
+LA::LongInt& LA::LongInt::operator+=(const LongInt& rhs)
+{
+	return operator=(operator+(rhs));
+}
+
+LA::LongInt& LA::LongInt::operator*=(const LongInt& rhs)
+{
+	return operator=(operator*(rhs));
+}
+
+LA::LongInt& LA::LongInt::operator/=(const LongInt& rhs)
+{
+	return operator=(operator/(rhs));
+}
+
+LA::LongInt& LA::LongInt::operator--()
+{
+	operator-=(1ll);
+	return *this;
+}
+
+LA::LongInt LA::LongInt::operator--(int)
+{
+	LongInt res(*this);
+	operator-=(1ll);
+	return res;
+}
+
+LA::LongInt& LA::LongInt::operator++()
+{
+	operator+=(1ll);
+	return *this;
+}
+
+LA::LongInt LA::LongInt::operator++(int)
+{
+	LongInt res(*this);
+	operator+=(1ll);
+	return res;
+}
+
+LA::LongInt LA::LongInt::operator%(const LongInt& rhs) const
+{
+	return operator-(rhs.operator*(operator/(rhs)));
 }
 
 LA::LongInt std::abs(const LA::LongInt& n)
 {
-	LA::LongInt res(n);
-	res.setNegative(false);
+	return n < 0 ? -n : n;
+}
+
+LA::LongInt std::pow(const LA::LongInt& n, const LA::LongInt& pow)
+{
+	LA::LongInt res = n;
+	for (LA::LongInt i = 1; i < pow; ++i)
+	{
+		res *= n;
+	}
 	return res;
+}
+
+DRIVERLA_API LA::LongInt std::sqrt(const LA::LongInt& n)
+{
+	if (n == 0 || n == 1)
+	{
+		return n;
+	}
+	LA::LongInt start = 1, end = n, ans = -1;
+	while (start <= end)
+	{
+		LA::LongInt mid = (start + end) / 2;
+		if (mid * mid == n)
+		{
+			return mid;
+		}
+		if (mid * mid < n)
+		{
+			start = mid + 1;
+			ans = mid;
+		}
+		else
+		{
+			end = mid - 1;
+		}
+	}
+	return ans;
 }

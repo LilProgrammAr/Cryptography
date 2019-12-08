@@ -1,16 +1,8 @@
 #pragma once
 #include "framework.h"
 
-#include <vector>
-#include <cstdint>
 #include <string>
-
-struct DRIVERLA_API std::_Container_base12;
-EXTSPEC_TEMPLATE template struct DRIVERLA_API std::_Simple_types<std::int8_t>;
-EXTSPEC_TEMPLATE template class DRIVERLA_API std::_Vector_val<std::_Simple_types<std::int8_t>>;
-EXTSPEC_TEMPLATE template class DRIVERLA_API std::_Compressed_pair<std::allocator<std::int8_t>, std::_Vector_val<std::_Simple_types<std::int8_t>>, true>;
-EXTSPEC_TEMPLATE template class DRIVERLA_API std::vector<std::int8_t>;
-EXTSPEC_TEMPLATE template struct DRIVERLA_API std::pair<std::vector<std::int8_t>&&, std::vector<std::int8_t>&&>;
+#include <type_traits>
 
 namespace LA
 {
@@ -23,9 +15,12 @@ namespace LA
 		std::pair<Digits, Digits> makeEqualLengthDigits(const LongInt& other) const;
 		LongInt(Digits&& n, bool isNegative);
 
-		template <typename Stream>
+		template <class Stream>
 		friend Stream& operator<<(Stream& str, const LA::LongInt& n);
+
+		void fromInteger(std::int64_t integer);
 		void fromString(const std::string& str);
+		void removeZeros();
 
 	private:
 		bool m_isNegative;
@@ -36,8 +31,10 @@ namespace LA
 		LongInt(const std::initializer_list<std::int8_t>& list);
 		LongInt(const std::string& str);
 		LongInt(const char* str);
-		LongInt(std::int64_t n);
-		LongInt(std::int32_t n);
+
+		template <class T>
+		LongInt(T n);
+
 		LongInt(const LongInt& other);
 		LongInt(LongInt&&) = default;
 
@@ -48,6 +45,16 @@ namespace LA
 		LongInt operator+(const LongInt& rhs) const;
 		LongInt operator*(const LongInt& rhs) const;
 		LongInt operator/(const LongInt& rhs) const;
+
+		LongInt& operator-=(const LongInt& rhs);
+		LongInt& operator+=(const LongInt& rhs);
+		LongInt& operator*=(const LongInt& rhs);
+		LongInt& operator/=(const LongInt& rhs);
+
+		LongInt& operator--();
+		LongInt operator--(int);
+		LongInt& operator++();
+		LongInt operator++(int);
 
 		LongInt operator%(const LongInt& rhs) const;
 
@@ -65,10 +72,7 @@ namespace LA
 		void setNegative(bool negative);
 	};
 
-	LongInt sqrt_whole(const LongInt& n);
-
-
-	template <typename Stream>
+	template <class Stream>
 	Stream& operator<<(Stream& str, const LA::LongInt& n)
 	{
 		if (n.m_isNegative)
@@ -94,9 +98,23 @@ namespace LA
 		}
 		return str;
 	}
+
+	LongInt operator""_lint(unsigned long long n)
+	{
+		return LongInt(n);
+	}
+
+	template<class T>
+	inline LongInt::LongInt(T n) 
+		: m_isNegative(n < 0)
+	{
+		fromInteger(static_cast<std::int64_t>(n));
+	}
 } // namespace LA
 
 namespace std
 {
-	LA::LongInt abs(const LA::LongInt& n);
+	DRIVERLA_API LA::LongInt abs(const LA::LongInt& n);
+	DRIVERLA_API LA::LongInt pow(const LA::LongInt& n, const LA::LongInt& pow);
+	DRIVERLA_API LA::LongInt sqrt(const LA::LongInt& n);
 }
